@@ -6,12 +6,19 @@
 
 #include "MQTTClient.h"
 
+#include "stm32l475e_iot01_accelero.h"
+
+using namespace std::chrono;
+
+int16_t pDataXYZ[3] = {0};
 
 // GLOBAL VARIABLES
 
 WiFiInterface *wifi;
 
-InterruptIn btn2(USER_BUTTON);
+Ticker flipper;
+
+//InterruptIn btn2(USER_BUTTON);
 
 //InterruptIn btn3(SW3);
 
@@ -61,7 +68,9 @@ void publish_message(MQTT::Client<MQTTNetwork, Countdown>* client) {
 
     char buff[100];
 
-    sprintf(buff, "QoS0 Hello, Python! #%d", message_num);
+    BSP_ACCELERO_AccGetXYZ(pDataXYZ);
+
+    sprintf(buff, "%d, %d, %d\n", pDataXYZ[0], pDataXYZ[1], pDataXYZ[2]);
 
     message.qos = MQTT::QOS0;
 
@@ -178,7 +187,11 @@ int main() {
 
     mqtt_thread.start(callback(&mqtt_queue, &EventQueue::dispatch_forever));
 
-    btn2.rise(mqtt_queue.event(&publish_message, &client));
+    BSP_ACCELERO_Init();
+
+    flipper.attach(mqtt_queue.event(&publish_message, &client), 500ms);
+
+    //btn2.rise(mqtt_queue.event(&publish_message, &client));
 
     //btn3.rise(&close_mqtt);
 
